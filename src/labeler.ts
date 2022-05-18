@@ -26,6 +26,7 @@ export class ConventionalLabeler {
       core.setFailed("No pull request found");
       return;
     }
+    core.info(`PR ${pr}`);
 
     // get pr's existing labels
     core.info("Getting PR labels");
@@ -34,6 +35,7 @@ export class ConventionalLabeler {
       core.setFailed(labels.error);
       return;
     }
+    core.info(`Current labels: ${labels}`);
 
     // get the pr title
     const title = this.githubClient.getTitle();
@@ -41,12 +43,14 @@ export class ConventionalLabeler {
       core.setFailed("Failed to get the pr title");
       return;
     }
+    core.info(`Title: ${title}`);
 
     // get list of predefined labels
     core.info("Getting predefined labels");
     const predefinedLabels = this.conventionalCommit.getValidLabels(
       labels.labels ?? []
     );
+    core.info(`Predefined labels: ${predefinedLabels}`);
 
     // validate the commit message and title
     core.info("Validating commit message and title");
@@ -71,11 +75,13 @@ export class ConventionalLabeler {
       core.setFailed(generatedLabel.error);
       return;
     }
+    core.info(`Generated label: ${generatedLabel}`);
 
     const differentLabels = this.conventionalCommit.getDiffLabels(
       predefinedLabels,
       [generatedLabel.label!]
     );
+    core.info(`different labels: ${differentLabels}`)
 
     // remove the labels that are not in the preset labels
     core.info("Removing different label");
