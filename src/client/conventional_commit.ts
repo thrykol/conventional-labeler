@@ -26,7 +26,7 @@ export class ConventionalCommit {
       {
         name: "title",
         regex:
-          /^(feat|fix|docs|style|refactor|perf|test|chore|build)(\(([\w\s]+)\))?: /,
+          /^(feat|fix|docs|style|refactor|perf|test|chore|build)(?:\([\w\s]+\))?(!)?: /,
       },
     ];
 
@@ -60,12 +60,13 @@ export class ConventionalCommit {
 
     // get the label
     const match = message.match(
-      /^(feat|fix|docs|style|refactor|perf|test|chore|build)(\(([\w\s]+)\))?: /
+      /^(feat|fix|docs|style|refactor|perf|test|chore|build)(?:\([\w\s]+\))?(!)?: /
     );
 
     const matchedLabel = match![1];
+    const label = this.map[matchedLabel].concat(match![2] != null ? "!" : "");
     return {
-      label: this.map[matchedLabel],
+      label: label,
     };
   }
 
