@@ -376,7 +376,7 @@ class ConventionalLabeler {
         const token = core.getInput("access_token", { required: true });
         this.githubClient = new github_1.GithubClient(token);
         this.conventionalCommit = new conventional_commit_1.ConventionalCommit();
-        this.strict = core.getBooleanInput(token);
+        this.strict = core.getBooleanInput("strict");
     }
     /**
      * Label the pr based on the title
