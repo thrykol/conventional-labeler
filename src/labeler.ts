@@ -18,7 +18,7 @@ export class ConventionalLabeler {
   /**
    * Label the pr based on the title
    */
-  async label() {
+  async labels() {
     // get pr's number
     core.info("Getting PR number");
     const pr = this.githubClient.getPr();
@@ -70,16 +70,16 @@ export class ConventionalLabeler {
 
     // get the generated label
     core.info(`Getting conventional label from title ${title}`);
-    const generatedLabel = this.conventionalCommit.getLabel(title);
-    if (generatedLabel.error) {
-      core.setFailed(generatedLabel.error);
+    const generatedLabels = this.conventionalCommit.getLabels(title);
+    if (generatedLabels.error) {
+      core.setFailed(generatedLabels.error);
       return;
     }
     core.info(`Generated label: ${generatedLabel}`);
 
     const differentLabels = this.conventionalCommit.getDiffLabels(
       predefinedLabels,
-      [generatedLabel.label!]
+      generatedLabels.labels!
     );
     core.info(`different labels: ${differentLabels}`)
 
@@ -95,13 +95,14 @@ export class ConventionalLabeler {
     }
 
     // add the generated label
-    core.info(`Adding label ${generatedLabel.label} to PR`);
-    const error = await this.githubClient.addLabel(pr, [generatedLabel.label!]);
+    core.info(`Adding labels ${generatedLabels!.labels!.join(", ")} to PR`);
+    const error = await this.githubClient.addLabel(pr, generatedLabels.labels!);
     if (error) {
       core.setFailed(error);
       return;
     }
 
-    core.setOutput("labels", generatedLabel.label);
+    core.setOutput("labels", generatedLabels!.labels!.join(" "));
+    core.setOutput("labels_list", generatedLabels.labels);
   }
 }
