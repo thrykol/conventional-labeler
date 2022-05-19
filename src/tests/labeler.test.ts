@@ -54,7 +54,7 @@ describe("Given a labeler client", () => {
 
   it("should return the corresponding labels for the commit title", async () => {
     await client.labels();
-    expect(core.info).toHaveBeenCalledTimes(7);
+    expect(core.info).toHaveBeenCalledTimes(13);
   });
 
   it("Should add label with an error", async () => {

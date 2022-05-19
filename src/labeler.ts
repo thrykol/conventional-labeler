@@ -75,7 +75,7 @@ export class ConventionalLabeler {
       core.setFailed(generatedLabels.error);
       return;
     }
-    core.info(`Generated label: ${generatedLabel}`);
+    core.info(`Generated label: ${generatedLabels}`);
 
     const differentLabels = this.conventionalCommit.getDiffLabels(
       predefinedLabels,
