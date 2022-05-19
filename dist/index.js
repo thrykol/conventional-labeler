@@ -36,7 +36,7 @@ class ConventionalCommit {
         const rules = [
             {
                 name: "title",
-                regex: /^(feat|fix|docs|style|refactor|perf|test|chore|build)(\(([\w\s]+)\))?: /,
+                regex: /^(feat|fix|docs|style|refactor|perf|test|chore|build)(?:\([\w\s]+\))?(!)?: /,
             },
         ];
         // check if the commit message follows the conventional commit format
@@ -49,9 +49,9 @@ class ConventionalCommit {
         return false;
     }
     /**
-     * Get the corresponding label for the commit title
+     * Get the corresponding labels for the commit title
      */
-    getLabel(message) {
+    getLabels(message) {
         // if message is empty, return error
         if (message.length === 0) {
             return { error: "commit message is empty" };
@@ -64,10 +64,15 @@ class ConventionalCommit {
             };
         }
         // get the label
-        const match = message.match(/^(feat|fix|docs|style|refactor|perf|test|chore|build)(\(([\w\s]+)\))?: /);
+        const match = message.match(/^(feat|fix|docs|style|refactor|perf|test|chore|build)(?:\([\w\s]+\))?(!)?: /);
         const matchedLabel = match[1];
+        const label = this.map[matchedLabel];
+        var labels = [label];
+        if (match[2] != null) {
+            labels.push("breaking");
+        }
         return {
-            label: this.map[matchedLabel],
+            labels: labels,
         };
     }
     /**
@@ -112,16 +117,23 @@ class ConventionalCommit {
     /**
      * Validate commit messages based on the conventional commit format.
      * The following rules will be applied:
-     * (1): If only one message and it is not equal to the title of the PR, return error
-     * (2): Otherwise, if the message is not in the conventional commit format, return error
+     * (1): If not strict, messages won't be validated
+     * (2): Otherwise if only one message and it is not equal to the title of the PR, return error
+     * (3): Otherwise, if any message is not in the conventional commit format, return error
      *
      * @param messages commit messages
+     * @param title PR title
+     * @param strict whether strict message checking should apply
      * @returns an error message if the commit messages are not valid, otherwise return undefined
      */
-    validate(messages, title) {
+    validate(messages, title, strict = true) {
         // Check if title meets the conventional commit format
         if (!this.validateMessage(title)) {
             return `title [${title}] does not follow the conventional commit format`;
+        }
+        // If not in strict mode, no more work needs to be done
+        if (!strict) {
+            return undefined;
         }
         if (messages.length === 0) {
             return `commit message is empty`;
@@ -315,7 +327,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const labeler_1 = __nccwpck_require__(8389);
 (() => __awaiter(void 0, void 0, void 0, function* () {
     const labeler = new labeler_1.ConventionalLabeler();
-    yield labeler.label();
+    yield labeler.labels();
 }))();
 
 
@@ -364,11 +376,12 @@ class ConventionalLabeler {
         const token = core.getInput("access_token", { required: true });
         this.githubClient = new github_1.GithubClient(token);
         this.conventionalCommit = new conventional_commit_1.ConventionalCommit();
+        this.strict = core.getBooleanInput(token);
     }
     /**
      * Label the pr based on the title
      */
-    label() {
+    labels() {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
             // get pr's number
@@ -378,6 +391,7 @@ class ConventionalLabeler {
                 core.setFailed("No pull request found");
                 return;
             }
+            core.info(`PR ${pr}`);
             // get pr's existing labels
             core.info("Getting PR labels");
             const labels = yield this.githubClient.getLabels(pr);
@@ -385,34 +399,40 @@ class ConventionalLabeler {
                 core.setFailed(labels.error);
                 return;
             }
+            core.info(`Current labels: ${labels}`);
             // get the pr title
             const title = this.githubClient.getTitle();
             if (!title || title.length === 0) {
                 core.setFailed("Failed to get the pr title");
                 return;
             }
+            core.info("Got the title");
+            core.info(`Title: ${title}`);
             // get list of predefined labels
             core.info("Getting predefined labels");
             const predefinedLabels = this.conventionalCommit.getValidLabels((_a = labels.labels) !== null && _a !== void 0 ? _a : []);
+            core.info(`Predefined labels: ${predefinedLabels}`);
             // validate the commit message and title
             core.info("Validating commit message and title");
             const commitMessages = yield this.githubClient.getCommitMessages(pr);
             if (commitMessages.err) {
                 core.setFailed(commitMessages.err);
             }
-            const validationError = this.conventionalCommit.validate(commitMessages.commitMessages, title);
+            const validationError = this.conventionalCommit.validate(commitMessages.commitMessages, title, this.strict);
             if (validationError) {
                 core.setFailed(validationError);
                 return;
             }
             // get the generated label
             core.info(`Getting conventional label from title ${title}`);
-            const generatedLabel = this.conventionalCommit.getLabel(title);
-            if (generatedLabel.error) {
-                core.setFailed(generatedLabel.error);
+            const generatedLabels = this.conventionalCommit.getLabels(title);
+            if (generatedLabels.error) {
+                core.setFailed(generatedLabels.error);
                 return;
             }
-            const differentLabels = this.conventionalCommit.getDiffLabels(predefinedLabels, [generatedLabel.label]);
+            core.info(`Generated label: ${generatedLabels}`);
+            const differentLabels = this.conventionalCommit.getDiffLabels(predefinedLabels, generatedLabels.labels);
+            core.info(`different labels: ${differentLabels}`);
             // remove the labels that are not in the preset labels
             core.info("Removing different label");
             const removeError = yield this.githubClient.removeLabels(pr, differentLabels);
@@ -421,13 +441,14 @@ class ConventionalLabeler {
                 return;
             }
             // add the generated label
-            core.info(`Adding label ${generatedLabel.label} to PR`);
-            const error = yield this.githubClient.addLabel(pr, [generatedLabel.label]);
+            core.info(`Adding labels ${generatedLabels.labels.join(", ")} to PR`);
+            const error = yield this.githubClient.addLabel(pr, generatedLabels.labels);
             if (error) {
                 core.setFailed(error);
                 return;
             }
-            core.setOutput("labels", generatedLabel.label);
+            core.setOutput("labels", generatedLabels.labels.join(" "));
+            core.setOutput("labels_list", generatedLabels.labels);
         });
     }
 }
