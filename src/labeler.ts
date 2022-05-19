@@ -43,6 +43,7 @@ export class ConventionalLabeler {
       core.setFailed("Failed to get the pr title");
       return;
     }
+    core.info("Got the title");
     core.info(`Title: ${title}`);
 
     // get list of predefined labels

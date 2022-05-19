@@ -31,9 +31,7 @@ export class ConventionalCommit {
     ];
 
     // check if the commit message follows the conventional commit format
-      console.log(`message: [${message}]`);
     for (const rule of rules) {
-      console.log(`Rule: ${rule.regex}`);
       const match = message.match(rule.regex);
       if (match) {
         return true;
